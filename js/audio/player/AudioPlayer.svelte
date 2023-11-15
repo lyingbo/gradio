@@ -11,7 +11,10 @@
 	import type { WaveformOptions } from "../shared/types";
 
 	export let value: null | FileData = null;
-	$: url = value?.url;
+	let url: string | undefined = undefined;
+	$: resolve_wasm_src(value?.url).then((resolved_url) => {
+		url = resolved_url ?? undefined;
+	});
 	export let label: string;
 	export let i18n: I18nFormatter;
 	export let dispatch: (event: any, detail?: any) => void;
@@ -48,7 +51,7 @@
 	const create_waveform = (): void => {
 		waveform = WaveSurfer.create({
 			container: container,
-			url: value?.url,
+			url,
 			...waveform_settings
 		});
 	};
@@ -106,14 +109,9 @@
 		dispatch("edit");
 	};
 
-	async function load_audio(data: string): Promise<void> {
-		await resolve_wasm_src(data).then((resolved_src) => {
-			if (!resolved_src || value?.is_stream) return;
-			return waveform?.load(resolved_src);
-		});
+	$: if (url && !value?.is_stream) {
+		waveform?.load(url);
 	}
-
-	$: url && load_audio(url);
 
 	onMount(() => {
 		window.addEventListener("keydown", (e) => {
@@ -134,7 +132,7 @@
 {:else if value.is_stream}
 	<audio
 		class="standard-player"
-		src={value.url}
+		src={url}
 		controls
 		autoplay={waveform_settings.autoplay}
 	/>
